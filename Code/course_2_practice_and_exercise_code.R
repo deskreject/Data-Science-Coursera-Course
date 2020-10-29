@@ -34,5 +34,6 @@ install.packages("swirl")
   install.packages("testthat")
 library(swirl)
 
+  ls()
   #start swirl
 swirl()

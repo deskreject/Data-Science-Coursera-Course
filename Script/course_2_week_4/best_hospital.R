@@ -244,67 +244,51 @@ rankall <- function(outcome, num = "best") {
   
   ## For each state, find the hospital of the given rank
   
-  if(outcome == "heart attack"){
-  ranking <- df_refined %>%
-    group_by(State) %>%
-    arrange(Hospital.Name) %>%
-    arrange(heart.attack) %>%
-    mutate("rank" = rank(heart.attack, ties.method = "first")) %>%
-    filter(rank == num) %>%
-    select(Hospital.Name, State) %>%
-    arrange(State)
-  }else if(outcome == "heart failure") {
-    ranking <- df_refined %>%
-      group_by(State) %>%
-      arrange(Hospital.Name) %>%
-      arrange(heart.failure) %>%
-      mutate("rank" = rank(heart.failure, ties.method = "first")) %>%
-      filter(rank == num) %>%
-      select(Hospital.Name, State) %>%
-      arrange(State)
-  }else{
-    ranking <- df_refined %>%
-      group_by(State) %>%
-      arrange(Hospital.Name) %>%
-      arrange(pneumonia) %>%
-      mutate("rank" = rank(pneumonia, ties.method = "first")) %>%
-      if(num == "best"){
-        filter(rank == 1)
-      }else if(num == "worst"){
-        filter(rank == min())
-      }
-    filter(rank == num) %>%
-      select(Hospital.Name, State) %>%
-      arrange(State)
-  }
+  df_hospital_name <- lapply(df_split, function(x){
+    
+    if(outcome == "pneumonia"){
+      df_split_ranked <- x %>% 
+        arrange(Hospital.Name) %>%
+        filter(is.na(pneumonia) == F) %>%
+        arrange(pneumonia)  %>%
+        mutate("rank" = rank(pneumonia, ties.method = "first"))
+    } else if(outcome == "heart failure") {
+      df_split_ranked <- x %>% 
+        arrange(Hospital.Name) %>%
+        filter(is.na(heart.failure) == F) %>%
+        arrange(heart.failure)  %>%
+        mutate("rank" = rank(heart.failure, ties.method = "first"))
+    }else{
+      df_split_ranked <- x %>% 
+        arrange(Hospital.Name) %>%
+        filter(is.na(heart.attack) == F) %>%
+        arrange(heart.attack)  %>%
+        mutate("rank" = rank(heart.attack, ties.method = "first"))
+    }
+    
+    if(num == "worst"){
+      df_split_ranked[length(df_split_ranked[,1]), 1]
+    } else if(num == "best"){
+      df_split_ranked[1, 1]
+    } else if(num > df_split_ranked[,1]){
+      return(NA)
+    }else{
+      df_split_ranked[num,1]
+    }
+  })
+  
+  
+  unique(df_refined[,2])
+  
+  hosptial_names_comp <- as.data.frame(unlist(df_hospital_name))
+  hosptial_names_comp$state <- sort(unique(df_refined[,2]))
   
   
   ## Return a data frame with the hospital names and the
   ## (abbreviated) state name
-  return(ranking)
+  return(hosptial_names_comp)
 }
 
-#testing formulas
-
-num <- "worst"
-
-ranking <- test_df %>%
-  group_by(State) %>%
-  arrange(Hospital.Name) %>%
-  arrange(heart.attack) %>%
-  mutate("rank" = rank(heart.attack, ties.method = "first")) %>%
-  if(num == "best"){
-    filter(rank == 1) 
-  }else if(num == "worst"){
-    filter(rank == min())
-  }else{
-filter(rank == num)
-    }
-
-
-num_hospitals <- test_df %>%
-  group_by(State) %>%
-  summarise(n = n())
 
 #testing function
 
@@ -312,4 +296,29 @@ head(rankall("heart attack", 20), 10)
 
 tail(rankall("pneumonia", "worst"), 3)
 
+tail(rankall("heart failure"), 10)
 
+# the exam
+
+best("SC", "heart attack")
+
+best("NY", "pneumonia")
+
+best("AK", "pneumonia")
+
+rankhospital("NC", "heart attack", "worst")
+
+rankhospital("WA", "heart attack", 7)
+
+rankhospital("TX", "pneumonia", 10)
+
+rankhospital("NY", "heart attack", 7)
+
+r <- rankall("heart attack", 4)
+as.character(subset(r, state == "HI")$hospital)
+
+r <- rankall("pneumonia", "worst")
+as.character(subset(r, state == "NJ")$hospital)
+
+r <- rankall("heart failure", 10)
+as.character(subset(r, state == "NV")$hospital)
